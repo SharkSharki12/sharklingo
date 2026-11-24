@@ -9,7 +9,7 @@
     v: 1, lang: null, onboarded: false, created: today(),
     xp: 0, xpByDay: {}, streak: 0, bestStreak: 0, lastActive: null, freezes: 0,
     gems: 100, hearts: MAX_HEARTS, heartsAt: Date.now(),
-    zen: false, sound: true, voice: true, voiceName: '', voiceRate: 0.9, theme: 'auto', dailyGoal: 20, hints: true,
+    zen: false, script: 'latin', lexVer: 1, sound: true, voice: true, voiceName: '', voiceRate: 0.9, theme: 'auto', dailyGoal: 20, hints: true,
     done: {}, words: {}, mistakes: [], ach: {}, quests: null,
     stats: { lessons: 0, perfect: 0, correct: 0, total: 0, listen: 0, typed: 0, conj: 0, stories: 0, bestCombo: 0, speedBest: 0, time: 0 },
     stories: {}, mascotColor: 'ocean', colors: ['ocean'],
@@ -25,6 +25,14 @@
       // migration : ancienne mascotte (dragon violet) → Sharky
       if (!this.s.colors.includes('ocean')) { this.s.colors.unshift('ocean'); if (this.s.mascotColor === 'violet') this.s.mascotColor = 'ocean'; }
       if (!MASCOT_COLORS[this.s.mascotColor]) this.s.mascotColor = 'ocean';
+      // migration : lexique v1 (714 mots) → Dictionnaire du Vaelrën éd. 3 (identifiants changés)
+      if ((this.s.lexVer || 1) < (window.LEX_VERSION || 1) && window.LEX_MIGRATE_V1) {
+        const M = window.LEX_MIGRATE_V1, w2 = {};
+        for (const k in this.s.words) { const n = M[+k]; if (n >= 0) w2[n] = this.s.words[k]; }
+        this.s.words = w2;
+        this.s.mistakes = this.s.mistakes.map(k => k.startsWith('w:') ? (M[+k.slice(2)] >= 0 ? 'w:' + M[+k.slice(2)] : null) : k).filter(Boolean);
+        this.s.lexVer = window.LEX_VERSION; this.save();
+      }
       this.regen(); this.checkStreak();
     },
     save() { try { localStorage.setItem(KEY, JSON.stringify(this.s)); } catch (e) { /* stockage indisponible */ } },
@@ -80,6 +88,7 @@
       const th = this.s.theme;
       const dark = th === 'dark' || (th === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      document.documentElement.dataset.script = this.s.script || 'latin';
     },
   };
   window.State = State;
@@ -153,6 +162,7 @@
       if (State.s.ach[a.id]) continue;
       if (a.v() >= achGoal(a)) {
         State.s.ach[a.id] = today(); State.s.gems += 20;
+        if (window.peam) window.peam.unlock(a.id);
         setTimeout(() => toast(a.icon, t('toastAch', { t: L({ fr: a.fr, es: a.es }) })), 1400);
       }
     }
@@ -200,7 +210,7 @@
     const lang = State.s.lang;
     const uniq = []; const seen = new Set();
     for (const e of a.entries) { const g = Morph.gloss(e, lang); if (!seen.has(g)) { seen.add(g); uniq.push(g); } }
-    let h = `<div class="h-w">${esc(a.base)}</div><div class="h-g">${uniq.slice(0, 3).map(esc).join(' · ')}</div>`;
+    let h = `<div class="h-w">${esc(a.base)}</div>${State.s.script === 'tezin' ? `<div class="h-t tz">${esc(tok)}</div>` : ''}<div class="h-g">${uniq.slice(0, 3).map(esc).join(' · ')}</div>`;
     if (a.sufs.length) h += `<div class="h-m">${a.sufs.map(s => '-' + esc(s.s) + ' : ' + esc(Morph.SUF_L[lang][s.t])).join('<br>')}</div>`;
     return h;
   }
@@ -263,6 +273,7 @@
   ];
   let current = 'learn';
   window.go = function (page, arg) {
+    if (window.peam) window.peam.presence({ learn: 'Sur le chemin', practice: 'Entraînement', stories: 'Lit une histoire', dict: 'Dictionnaire', grammar: 'Grammaire', shop: 'Boutique', profile: 'Profil', settings: 'Réglages' }[page] || 'Sharklingo');
     current = page; hideHint();
     renderNav();
     const main = $('#main'); main.scrollTop = 0;
@@ -363,6 +374,14 @@
     State.applyTheme();
     if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => State.applyTheme());
     if (!State.s.onboarded) Onboarding.start(); else renderAll();
+    window.peamSync = function () {
+      if (!window.peam) return;
+      const st = State.s;
+      Object.keys(st.ach).forEach(id => window.peam.unlock(id));            // rattrapage des succès
+      window.peam.stat('xp', st.xp); window.peam.stat('lecons', st.stats.lessons);
+      window.peam.stat('mots', Object.keys(st.words).length); window.peam.stat('serie', st.bestStreak);
+    };
+    peamSync();
     setInterval(() => { const h = State.s.hearts; State.regen(); if (State.s.hearts !== h) { State.save(); if (!$('#lesson')) renderSide(); } }, 60000);
   });
 })();

@@ -126,6 +126,7 @@
         <button class="pcard" data-k="conj"><div class="pi">⚙️</div><div class="pt">${t('pConj')}</div><div class="pd">${t('pConjD')}</div><div class="pc">10 ×</div></button>
         <button class="pcard" data-k="decl"><div class="pi">📦</div><div class="pt">${t('pDecl')}</div><div class="pd">${t('pDeclD')}</div><div class="pc">10 ×</div></button>
         <button class="pcard" data-k="listen" ${voice ? '' : 'disabled'}><div class="pi">🎧</div><div class="pt">${t('pListen')}</div><div class="pd">${t('pListenD')}</div><div class="pc">${voice ? '8 ×' : t('pNeedVoice')}</div></button>
+        <button class="pcard" data-k="tezin"><div class="pi tz" style="color:var(--violet)">vælrën</div><div class="pt">${t('pTezin')}</div><div class="pd">${t('pTezinD')}</div><div class="pc">10 ×</div></button>
         <button class="pcard" data-k="speed"><div class="pi">⚡</div><div class="pt">${t('pSpeed')}</div><div class="pd">${t('pSpeedD')}</div><div class="pc">${t('speedBest', { n: State.s.stats.speedBest })}</div></button>
       </div></div>`;
     const ms = $('.mobile-stats', main); if (ms) { ms.innerHTML = topStatsHTML(); bindTopStats(ms); }
@@ -185,29 +186,33 @@
 
   // ================= DICTIONNAIRE =================
   let dictQ = '', dictF = 'all', dictTheme = '';
+  const GROUPS = ['noms', 'verbes', 'adjectifs', 'adverbes', 'personnes', 'lieux', 'abstrait', 'participes', 'nombres', 'grammaire', 'expressions'];
+  const dictWords = () => LEXICON.filter(e => !e.sense);
   Pages.dict = function (main) {
-    const themes = [...new Set(LEXICON.map(e => e.theme))].sort((a, b) => a.localeCompare(b, 'fr'));
-    main.innerHTML = `<div class="page wide"><h1>${t('dTitle')}</h1><p class="lead">${t('dLead', { n: LEXICON.length })}</p>
-      <div class="searchbar"><input type="search" placeholder="${t('dSearch')}" value="${esc(dictQ)}"><select class="sel theme"><option value="">— ${t('dAll')} —</option>${themes.map(th => `<option ${th === dictTheme ? 'selected' : ''}>${esc(th)}</option>`).join('')}</select></div>
-      <div class="chips">${[['all', t('dAll')], ['learned', '✓ ' + t('dLearned')], ['livre', t('dSrcLivre')], ['lexique', t('dSrcLexique')], ['ajout', t('dSrcAjout')]].map(([k, l]) => `<button class="chip ${dictF === k ? 'on' : ''}" data-f="${k}">${esc(l)}</button>`).join('')}</div>
-      <div class="dict-list"></div></div>`;
+    const all = dictWords();
+    main.innerHTML = `<div class="page wide"><h1>${t('dTitle')}</h1><p class="lead">${t('dLead', { n: all.length })}</p>
+      <div class="searchbar"><input type="search" placeholder="${t('dSearch')}" value="${esc(dictQ)}"><select class="sel theme"><option value="">— ${t('dAllCats')} —</option>${GROUPS.map(g => `<option value="${g}" ${g === dictTheme ? 'selected' : ''}>${esc(t('g_' + g))}</option>`).join('')}</select></div>
+      <div class="chips">${[['all', t('dAll')], ['learned', '✓ ' + t('dLearned')], ['livre', '◆ ' + t('dSrcLivre')], ['dico', t('dSrcDico')]].map(([k, l]) => `<button class="chip ${dictF === k ? 'on' : ''}" data-f="${k}">${esc(l)}</button>`).join('')}</div>
+      <div class="dict-count"></div><div class="dict-list"></div></div>`;
     const inp = $('input', main), list = $('.dict-list', main);
     const draw = () => {
       const q = Morph.normL(dictQ, 'fr', false).replace(/\s+/g, ' ');
-      let rows = LEXICON.filter(e => {
+      let rows = all.filter(e => {
         if (dictF === 'learned' && !State.knowsWord(e.id)) return false;
-        if (['livre', 'lexique', 'ajout'].includes(dictF) && e.src !== dictF) return false;
-        if (dictTheme && e.theme !== dictTheme) return false;
+        if ((dictF === 'livre' || dictF === 'dico') && e.src !== dictF) return false;
+        if (dictTheme && e.group !== dictTheme) return false;
         if (!q) return true;
-        return Morph.normV(e.v).includes(q) || Morph.normL(e.fr, 'fr', false).includes(q) || Morph.normL(e.es || '', 'es', false).includes(q);
+        return Morph.normV(e.v).includes(q) || Morph.normL(e.fr, 'fr', false).includes(q) || Morph.normL(e.es || '', 'es', false).includes(q) || Morph.normL(e.en || '', 'fr', false).includes(q);
       });
-      if (q) rows.sort((a, b) => (Morph.normV(b.v) === q) - (Morph.normV(a.v) === q) || (Morph.normV(a.v).startsWith(q) ? 0 : 1) - (Morph.normV(b.v).startsWith(q) ? 0 : 1));
+      const score = (e) => { const v = Morph.normV(e.v); if (v === q) return 0; const g = Morph.normL(Morph.gloss(e, lang()), lang(), false); if (g === q || g.split(/[ ,;]+/).includes(q)) return 1; if (v.startsWith(q)) return 2; return 3; };
+      if (q) rows.sort((a, b) => score(a) - score(b) || Morph.normV(a.v).localeCompare(Morph.normV(b.v)));
       else rows.sort((a, b) => Morph.normV(a.v).localeCompare(Morph.normV(b.v)));
-      const srcL = { livre: t('dSrcLivre'), lexique: t('dSrcLexique'), ajout: t('dSrcAjout') };
-      list.innerHTML = rows.length ? rows.slice(0, 400).map(e => `<button class="dict-row" data-id="${e.id}"><div class="w">${esc(e.v)}${State.knowsWord(e.id) ? '<span class="learned-dot">●</span>' : ''}</div><div><span class="g">${esc(Morph.gloss(e, lang()))}</span> <span class="c">${esc(e.cat)}</span></div><span class="src ${e.src}">${esc(srcL[e.src])}</span></button>`).join('') : `<div class="card center" style="color:var(--ink-soft);font-weight:700">${t('dNone')}</div>`;
+      $('.dict-count', main).textContent = t('dCount', { n: rows.length });
+      list.innerHTML = rows.length ? rows.slice(0, 300).map(e => `<button class="dict-row" data-id="${e.id}"><div class="w">${esc(e.v)}${State.knowsWord(e.id) ? '<span class="learned-dot">●</span>' : ''}</div><div><span class="g">${esc(Morph.gloss(e, lang()))}</span> <span class="c">${esc(e.label || e.cat)}</span></div><span class="src ${e.src}">${e.src === 'livre' ? '◆ ' + esc(t('dSrcLivre')) : esc(t('dSrcDico'))}</span></button>`).join('') + (rows.length > 300 ? `<div class="center" style="color:var(--ink-faint);font-weight:700;padding:10px">${t('dMore', { n: rows.length - 300 })}</div>` : '') : `<div class="card center" style="color:var(--ink-soft);font-weight:700">${t('dNone')}</div>`;
       $$('.dict-row', list).forEach(r => r.onclick = () => wordModal(LEXICON[+r.dataset.id]));
     };
-    inp.oninput = () => { dictQ = inp.value; draw(); };
+    let tmr = null;
+    inp.oninput = () => { dictQ = inp.value; clearTimeout(tmr); tmr = setTimeout(draw, 120); };
     $('.theme', main).onchange = (e) => { dictTheme = e.target.value; draw(); };
     $$('.chip', main).forEach(c => c.onclick = () => { dictF = c.dataset.f; $$('.chip', main).forEach(x => x.classList.toggle('on', x === c)); draw(); });
     draw(); setTimeout(() => inp.focus(), 50);
@@ -236,12 +241,12 @@
     return out;
   }
   function wordModal(e) {
-    const srcL = { livre: t('dSrcLivre'), lexique: t('dSrcLexique'), ajout: t('dSrcAjout') };
     const canTab = (e.cat === 'v' && !/\s/.test(e.v)) || (e.cat === 'n' && /^[a-zë]+$/i.test(e.v));
     const ex = examplesFor(e);
-    const m = modal(`<div class="word-head"><div class="w">${esc(e.v)}</div><button class="btn blue sound-btn" data-sp>🔊</button><span class="src ${e.src}">${esc(srcL[e.src])}</span></div>
-      <div class="word-sub">${esc(e.cat)} · ${esc(e.theme)}</div>
-      <table class="gt plain"><tr><td>🇫🇷 Français</td><td><b>${esc(e.fr)}</b></td></tr><tr><td>🇪🇸 Español</td><td><b>${esc(e.es || '—')}</b></td></tr>${e.note ? `<tr><td>${t('dNote')}</td><td>${esc(e.note)}</td></tr>` : ''}</table>
+    const m = modal(`<div class="word-head"><div class="w">${esc(e.v)}</div><button class="btn blue sound-btn" data-sp>🔊</button><span class="src ${e.src}">${e.src === 'livre' ? '◆ ' + esc(t('dSrcLivre')) : esc(t('dSrcDico'))}</span></div>
+      <div class="word-tezin"><span class="tz">${esc(e.v)}</span><span>${t('dTezin')}</span></div>
+      <div class="word-sub">${esc(e.label || e.cat)}${e.inf ? ` · ${t('tInf')} <span class="v">${esc(e.inf)}</span>` : ''}</div>
+      <table class="gt plain"><tr><td>🇫🇷 Français</td><td><b>${esc(e.fr)}</b></td></tr><tr><td>🇬🇧 English</td><td><b>${esc(e.en || '—')}</b></td></tr><tr><td>🇪🇸 Español</td><td><b>${esc(e.es || '—')}</b></td></tr>${e.form ? `<tr><td>${t('dForm')}</td><td>${esc(e.form)}</td></tr>` : ''}</table>
       ${canTab ? `<h4 style="font-weight:900;margin:16px 0 6px">${e.cat === 'v' ? t('dConj') : t('dDecl')}</h4>${e.cat === 'v' ? conjTable(e.v) : declTable(e.v)}` : ''}
       ${ex.length ? `<h4 style="font-weight:900;margin:16px 0 6px">${t('dExamples')}</h4><table class="gt plain">${ex.map(s => `<tr><td class="v">${tokenizeV(s.v[0])}</td><td>${esc(s[lang()][0])}</td></tr>`).join('')}</table>` : ''}`, { big: true });
     $('[data-sp]', m.el).onclick = () => { if (!TTS.speak(e.v)) toast('🔇', t('toastNoVoice')); };
@@ -265,7 +270,18 @@
     $('.backbtn', main).onclick = () => go('grammar');
     $$('[data-tool]', main).forEach(el => {
       const tool = el.dataset.tool;
-      if (tool === 'idioms') {
+      if (tool === 'tezin') {
+        const V = [['a', 'a'], ['e', 'é / e'], ['i', 'i'], ['o', 'o'], ['u', lang() === 'es' ? 'u' : 'ou'], ['ë', lang() === 'es' ? 'schwa' : 'e muet'], ['æ', lang() === 'es' ? 'e abierta' : 'è ouvert'], ['y', 'y']];
+        const C = [['p', 'b'], ['t', 'd'], ['k', 'g'], ['f', 'v'], ['s', 'z'], ['c', 'j']];
+        const O = ['h', 'r', 'l', 'm', 'n', 'w'];
+        el.innerHTML = `<table class="gt plain tezin-table"><tr>${V.map(x => `<td class="tzc">${x[0]}</td>`).join('')}</tr><tr>${V.map(x => `<td class="v" style="text-align:center">${x[0]}<div style="font-family:var(--font);font-size:11px;color:var(--ink-faint)">${esc(x[1])}</div></td>`).join('')}</tr></table>
+          <table class="gt plain tezin-table"><tr>${C.map(x => `<td class="tzc">${x[0]} ${x[1]}</td>`).join('')}</tr><tr>${C.map(x => `<td class="v" style="text-align:center">${x[0]} · ${x[1]}</td>`).join('')}</tr></table>
+          <table class="gt plain tezin-table"><tr>${O.map(x => `<td class="tzc">${x}</td>`).join('')}</tr><tr>${O.map(x => `<td class="v" style="text-align:center">${x}</td>`).join('')}</tr></table>`;
+      } else if (tool === 'tezin-try') {
+        el.innerHTML = `<input class="typebox v" style="min-height:0;height:50px;padding:8px 14px;font-family:var(--font-v)" value="Aer selen, vaelin nar !" spellcheck="false"><div class="tezin-demo tz out"></div>`;
+        const inp = $('input', el), out = $('.out', el);
+        const draw = () => { out.textContent = inp.value; }; inp.oninput = draw; draw();
+      } else if (tool === 'idioms') {
         el.innerHTML = IDIOMS.map(r => `<div style="padding:12px 0;border-bottom:2px solid var(--line)"><div style="display:flex;gap:10px;align-items:center"><button class="btn blue sound-btn" style="width:40px;height:38px;font-size:16px" data-speak="${esc(r[0])}">🔊</button><span class="v" style="font-size:20px;color:var(--violet);font-weight:700">${tokenizeV(r[0])}</span></div><div style="color:var(--ink-soft);font-weight:600;margin-top:4px">« ${esc(lang() === 'es' ? r[3] : r[1])} »</div><div style="font-weight:800">→ ${esc(lang() === 'es' ? r[4] : r[2])}</div></div>`).join('');
         $$('[data-speak]', el).forEach(b => b.onclick = () => TTS.speak(b.dataset.speak));
       } else {
@@ -339,6 +355,7 @@
       <div class="setting"><div class="sl"><b>${t('setLang')}</b><span>${t('setLangD')}</span></div><div class="seg"><button data-lang="fr" class="${s.lang === 'fr' ? 'on' : ''}">🇫🇷 Français</button><button data-lang="es" class="${s.lang === 'es' ? 'on' : ''}">🇪🇸 Español</button></div></div>
       <div class="setting"><div class="sl"><b>${t('setGoal')}</b><span>${s.dailyGoal} ${t('perDay')}</span></div><div class="seg">${[[10, 'goalCasual'], [20, 'goalRegular'], [30, 'goalSerious'], [50, 'goalIntense']].map(([n, k]) => `<button data-goal="${n}" class="${s.dailyGoal === n ? 'on' : ''}">${t(k)}</button>`).join('')}</div></div>
       <div class="setting"><div class="sl"><b>${t('setTheme')}</b></div><div class="seg">${['auto', 'light', 'dark'].map(k => `<button data-theme="${k}" class="${s.theme === k ? 'on' : ''}">${t('theme' + k[0].toUpperCase() + k.slice(1))}</button>`).join('')}</div></div>
+      <div class="setting"><div class="sl"><b>${t('setScript')}</b><span>${t('setScriptD')}</span></div><div class="seg"><button data-script="latin" class="${s.script !== 'tezin' ? 'on' : ''}">Abc</button><button data-script="tezin" class="${s.script === 'tezin' ? 'on' : ''}"><span class="tz">vælrën</span></button></div></div>
       <div class="setting"><div class="sl"><b>${t('setSound')}</b></div>${sw('sound')}</div>
       <div class="setting"><div class="sl"><b>${t('setVoice')}</b><span>${t('setVoiceD')}</span></div>${sw('voice')}</div>
       <div class="setting"><div class="sl"><b>${t('setVoiceSel')}</b><span>${voices.length} ${lang() === 'es' ? 'voces' : 'voix'}</span></div><div style="display:flex;gap:8px"><select class="sel" data-voice><option value="">${t('setVoiceAuto')}</option>${voices.map(v => `<option value="${esc(v.name)}" ${s.voiceName === v.name ? 'selected' : ''}>${esc(v.name)} (${esc(v.lang)})</option>`).join('')}</select><button class="btn small blue" data-test>${t('testVoice')}</button></div></div>
@@ -352,6 +369,7 @@
     $$('[data-lang]', main).forEach(b => b.onclick = () => { s.lang = b.dataset.lang; redo(); });
     $$('[data-goal]', main).forEach(b => b.onclick = () => { s.dailyGoal = +b.dataset.goal; if (s.quests) s.quests.date = ''; redo(); });
     $$('[data-theme]', main).forEach(b => b.onclick = () => { s.theme = b.dataset.theme; redo(); });
+    $$('[data-script]', main).forEach(b => b.onclick = () => { s.script = b.dataset.script; redo(); });
     $('[data-voice]', main).onchange = (e) => { s.voiceName = e.target.value; State.save(); TTS.speak('Haelin, ven !'); };
     $('[data-test]', main).onclick = () => { if (!TTS.speak('Haelin ! Na es Sharky. Aer selen, vaelin nar !')) toast('🔇', t('toastNoVoice')); };
     $('[data-rate]', main).oninput = (e) => { s.voiceRate = +e.target.value; State.save(); $('[data-rate]', main).closest('.setting').querySelector('span').textContent = s.voiceRate.toFixed(2) + '×'; };

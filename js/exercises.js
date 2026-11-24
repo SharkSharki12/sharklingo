@@ -14,6 +14,7 @@
     varana: '🟥', zurena: '🟦', solana: '🟨', elyna: '🟩', morena: '⬛', selana: '⬜', heshena: '🩶', orenja: '🟧', rozena: '🩷', brunela: '🟫',
     felisa: '😊', tristra: '😢', lasa: '😴', gaudel: '😄', pavel: '😨', iral: '😠', elin: '💞', surel: '😲',
     haelin: '👋', hael: '✌️', gratel: '🙏', postel: '👋', notel: '🌙', sorel: '🍀', ganel: '🎉', sanel: '🥂',
+    festel: '🎉', regel: '🎁', kastel: '🏰', palasiel: '🏯', torol: '🗼', trenel: '🚆', estal: '🚉', bankal: '🏦', musal: '🏛️', iglesiel: '⛪', pontel: '🌉', parkal: '🛝', hardinel: '🌷', panadar: '🧑‍🍳', medikal: '🧑‍⚕️', polisar: '👮', farmasiel: '💊', bibliel: '📚', kumpleanosel: '🎂', primaverel: '🌸', veranel: '🏖️', otonel: '🍂', invernel: '⛄', tendal: '🏬', kalel: '🛣️', varadthal: '🌆', vakasionel: '🧳', panaderel: '🥖',
     musel: '🎶', tamel: '🥁', harpel: '🪕', dansel: '💃', martel: '🔨', roel: '🛞', jeuel: '🎲', shakel: '♟️', deel: '🎲',
   };
   const PICK_CATS = new Set(['n', 'adj', 'interj']);
@@ -67,7 +68,7 @@
     const same = cands.filter(e => e.cat === w.cat);
     let picked = sample(same, n);
     if (picked.length < n) {
-      const more = window.LEXICON.filter(e => e.cat === w.cat && e.id !== w.id && !picked.includes(e) && Morph.shortGloss(e, lang()) !== Morph.shortGloss(w, lang()) && e.v.length < 14);
+      const more = window.LEXICON.filter(e => !e.sense && e.cat === w.cat && e.id !== w.id && !picked.includes(e) && Morph.shortGloss(e, lang()) !== Morph.shortGloss(w, lang()) && e.v.length < 14);
       picked = picked.concat(sample(more, n - picked.length));
     }
     return uniqBy(picked, e => Morph.shortGloss(e, lang()));
@@ -318,10 +319,21 @@
     if (!ex.length) return buildLesson(0, 0);
     return shuffle(ex).slice(0, 14);
   }
+  function buildTezin(n = 10) {
+    let ws = learnedWords().filter(e => !e.sense && /^[a-zë]+$/i.test(e.v) && e.v.length >= 3);
+    if (ws.length < 8) ws = window.LEXICON.filter(e => e.src === 'livre' && !e.sense && /^[a-zë]+$/.test(e.v) && e.v.length >= 3).slice(0, 120);
+    ws = uniqBy(ws, e => e.v.toLowerCase());
+    return sample(ws, n).map((w, i) => {
+      if (i % 3 === 2) return { type: 'type', key: 'tezin', from: 'l1', target: 'v', title: t('exTezinType'), html: `<div class="tezin-demo tz" style="font-size:54px;text-align:center;margin:10px 0 18px">${esc(w.v)}</div>`, accepted: [w.v] };
+      const d = sample(ws.filter(x => x.v !== w.v && x.v[0] === w.v[0]).concat(sample(ws.filter(x => x.v !== w.v), 6)), 3);
+      const opts = shuffle([w, ...uniqBy(d, e => e.v)].slice(0, 4));
+      return { type: 'mcq', key: 'tezin', title: t('exTezin'), pre: `<div class="tezin-demo tz" style="font-size:54px;text-align:center;margin:10px 0 18px">${esc(w.v)}</div>`, options: opts.map(e => `${e.v} — ${Morph.shortGloss(e, lang())}`), optV: false, answer: opts.indexOf(w) };
+    });
+  }
   function buildConj(n = 10) { return Array.from({ length: n }, exConj); }
   function buildDecl(n = 10) { return Array.from({ length: n }, exDecl); }
 
   function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
 
-  window.Ex = { EMOJI, buildLesson, buildUnitReview, buildMistakes, buildWords, buildListen, buildSmart, buildConj, buildDecl, rebuildMistake, lessonsFlat, lessonWords, sentByKey, allSentences, doneSentences, learnedWords, shuffle, sample, esc, exPairs };
+  window.Ex = { EMOJI, buildLesson, buildUnitReview, buildMistakes, buildWords, buildListen, buildSmart, buildConj, buildDecl, buildTezin, rebuildMistake, lessonsFlat, lessonWords, sentByKey, allSentences, doneSentences, learnedWords, shuffle, sample, esc, exPairs };
 })();

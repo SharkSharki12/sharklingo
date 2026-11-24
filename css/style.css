@@ -6,6 +6,7 @@
 @font-face { font-family: 'NunitoX'; font-weight: 400; src: url(../fonts/nunito-latin-ext-400-normal.woff2) format('woff2'); }
 @font-face { font-family: 'NunitoX'; font-weight: 700; src: url(../fonts/nunito-latin-ext-700-normal.woff2) format('woff2'); }
 @font-face { font-family: 'NunitoX'; font-weight: 800; src: url(../fonts/nunito-latin-ext-800-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Vaelren Ecriture'; src: url(../fonts/VaelrenEcriture.ttf) format('truetype'); }
 @font-face { font-family: 'Cinzel'; font-weight: 600; src: url(../fonts/cinzel-latin-600-normal.woff2) format('woff2'); }
 @font-face { font-family: 'Cinzel'; font-weight: 700; src: url(../fonts/cinzel-latin-700-normal.woff2) format('woff2'); }
 @font-face { font-family: 'Cinzel'; font-weight: 800; src: url(../fonts/cinzel-latin-800-normal.woff2) format('woff2'); }
@@ -543,3 +544,17 @@ select.sel { border: 2px solid var(--line); border-radius: 12px; background: var
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Tezin (écriture vaelrën, chapitre XV) ---------- */
+.tz { font-family: 'Vaelren Ecriture', var(--font-v); font-feature-settings: "liga" 1, "calt" 1; letter-spacing: .04em; }
+:root[data-script="tezin"] .v, :root[data-script="tezin"] .v-opt, :root[data-script="tezin"] .tile.v, :root[data-script="tezin"] .dict-row .w,
+:root[data-script="tezin"] .word-head .w, :root[data-script="tezin"] .pic .lbl, :root[data-script="tezin"] .typebox.v, :root[data-script="tezin"] .sc-t {
+  font-family: 'Vaelren Ecriture', var(--font-v); font-feature-settings: "liga" 1, "calt" 1; font-size: 1.3em; letter-spacing: .05em; font-weight: 400;
+}
+:root[data-script="tezin"] .typebox.v { font-size: 22px; }
+.word-tezin { display: flex; align-items: baseline; gap: 10px; margin: -4px 0 6px; color: var(--ink-faint); font-weight: 700; font-size: 13px; }
+.word-tezin .tz { font-size: 30px; color: var(--violet); }
+.hint .h-t { font-size: 20px; color: var(--violet); }
+table.gt.plain.tezin-table td.tzc { font-family: 'Vaelren Ecriture', serif !important; font-size: 34px; color: var(--violet) !important; text-align: center; font-weight: 400 !important; }
+.tezin-demo { font-size: 34px; color: var(--violet); margin: 8px 0 4px; }
+.dict-count { color: var(--ink-faint); font-weight: 800; font-size: 13px; margin: -6px 0 8px; }

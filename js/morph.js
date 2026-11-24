@@ -17,7 +17,7 @@
     if (!list.length) return null;
     if (!cat) return list[0];
     const cats = CAT_ALIAS[cat] || [cat];
-    return list.find(e => cats.includes(e.cat)) || list[0];
+    return list.find(e => e.sense && cats.includes(e.cat)) || list.find(e => cats.includes(e.cat)) || list[0];
   }
 
   const PRON = ['na', 'ta', 'se', 'sa', 'nar', 'tar', 'ser'];

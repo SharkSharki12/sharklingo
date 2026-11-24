@@ -11,7 +11,7 @@
 
   const Lesson = {
     start(kind, arg) {
-      const practiceKinds = ['mistakes', 'words', 'conj', 'decl', 'listen', 'smart'];
+      const practiceKinds = ['mistakes', 'words', 'conj', 'decl', 'listen', 'smart', 'tezin'];
       const isPractice = practiceKinds.includes(kind);
       if (!isPractice && !State.s.zen) { State.regen(); if (State.s.hearts <= 0) { heartsModal(); return; } }
       let queue = [];
@@ -22,10 +22,12 @@
       else if (kind === 'words') queue = Ex.buildWords();
       else if (kind === 'conj') queue = Ex.buildConj();
       else if (kind === 'decl') queue = Ex.buildDecl();
+      else if (kind === 'tezin') queue = Ex.buildTezin();
       else if (kind === 'listen') queue = Ex.buildListen();
       else if (kind === 'smart') queue = Ex.buildSmart();
       queue = queue.filter(Boolean);
       if (!queue.length) { toast('🤔', t('pNone')); return; }
+      if (window.peam) window.peam.presence(kind === 'lesson' ? `Leçon — ${L(COURSE[arg.ui].title)}` : kind === 'review' ? `Révision — ${L(COURSE[arg.ui].title)}` : 'Entraînement');
       S = { kind, arg, isPractice, queue, i: 0, initial: queue.length, firstTry: 0, wrong: 0, combo: 0, maxCombo: 0, t0: Date.now(), retried: new Set(), jumpErr: 0 };
       const el = document.createElement('div'); el.id = 'lesson';
       el.innerHTML = `<div class="l-top"><button class="l-close" aria-label="${t('quit')}">✕</button><div class="bar l-prog"><i style="width:0%"></i></div><div class="l-hearts"></div></div><div class="l-body"></div><div class="l-foot"><div class="inner"></div></div>`;
@@ -146,7 +148,7 @@
 
   R.mcq = (c, ex) => {
     let sel = -1;
-    const head = ex.speak ? `<div style="margin:-6px 0 18px">${speakBtn(ex.speak)}</div>` : '';
+    const head = (ex.pre || '') + (ex.speak ? `<div style="margin:-6px 0 18px">${speakBtn(ex.speak)}</div>` : '');
     if (ex.speak) setTimeout(() => TTS.speak(ex.speak), 250);
     c.innerHTML = `${head}<div class="options">${ex.options.map((o, i) => `<button class="opt ${ex.optV ? 'v-opt' : ''}" data-i="${i}"><span class="k">${i + 1}</span><span>${esc(o)}</span></button>`).join('')}</div>`;
     $$('.opt', c).forEach(b => b.onclick = () => { $$('.opt', c).forEach(x => x.classList.remove('sel')); b.classList.add('sel'); sel = +b.dataset.i; if (ex.optV) TTS.speak(ex.options[sel]); Sound.click(); lessonReady(true); });
@@ -369,7 +371,7 @@
       xp = 10; title = t('practiceDone'); State.gainHeart(1);
     }
     State.addXp(xp);
-    Ach.check(); State.save();
+    Ach.check(); State.save(); if (window.peamSync) peamSync();
     showDone({ title, sub: extra, xp, acc, secs, mood: 'happy' });
   }
 
