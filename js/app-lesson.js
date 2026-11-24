@@ -27,7 +27,6 @@
       else if (kind === 'smart') queue = Ex.buildSmart();
       queue = queue.filter(Boolean);
       if (!queue.length) { toast('🤔', t('pNone')); return; }
-      if (window.peam) window.peam.presence(kind === 'lesson' ? `Leçon — ${L(COURSE[arg.ui].title)}` : kind === 'review' ? `Révision — ${L(COURSE[arg.ui].title)}` : 'Entraînement');
       S = { kind, arg, isPractice, queue, i: 0, initial: queue.length, firstTry: 0, wrong: 0, combo: 0, maxCombo: 0, t0: Date.now(), retried: new Set(), jumpErr: 0 };
       const el = document.createElement('div'); el.id = 'lesson';
       el.innerHTML = `<div class="l-top"><button class="l-close" aria-label="${t('quit')}">✕</button><div class="bar l-prog"><i style="width:0%"></i></div><div class="l-hearts"></div></div><div class="l-body"></div><div class="l-foot"><div class="inner"></div></div>`;
@@ -371,7 +370,7 @@
       xp = 10; title = t('practiceDone'); State.gainHeart(1);
     }
     State.addXp(xp);
-    Ach.check(); State.save(); if (window.peamSync) peamSync();
+    Ach.check(); State.save();
     showDone({ title, sub: extra, xp, acc, secs, mood: 'happy' });
   }
 

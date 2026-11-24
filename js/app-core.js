@@ -162,7 +162,6 @@
       if (State.s.ach[a.id]) continue;
       if (a.v() >= achGoal(a)) {
         State.s.ach[a.id] = today(); State.s.gems += 20;
-        if (window.peam) window.peam.unlock(a.id);
         setTimeout(() => toast(a.icon, t('toastAch', { t: L({ fr: a.fr, es: a.es }) })), 1400);
       }
     }
@@ -273,7 +272,6 @@
   ];
   let current = 'learn';
   window.go = function (page, arg) {
-    if (window.peam) window.peam.presence({ learn: 'Sur le chemin', practice: 'Entraînement', stories: 'Lit une histoire', dict: 'Dictionnaire', grammar: 'Grammaire', shop: 'Boutique', profile: 'Profil', settings: 'Réglages' }[page] || 'Sharklingo');
     current = page; hideHint();
     renderNav();
     const main = $('#main'); main.scrollTop = 0;
@@ -374,14 +372,6 @@
     State.applyTheme();
     if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => State.applyTheme());
     if (!State.s.onboarded) Onboarding.start(); else renderAll();
-    window.peamSync = function () {
-      if (!window.peam) return;
-      const st = State.s;
-      Object.keys(st.ach).forEach(id => window.peam.unlock(id));            // rattrapage des succès
-      window.peam.stat('xp', st.xp); window.peam.stat('lecons', st.stats.lessons);
-      window.peam.stat('mots', Object.keys(st.words).length); window.peam.stat('serie', st.bestStreak);
-    };
-    peamSync();
     setInterval(() => { const h = State.s.hearts; State.regen(); if (State.s.hearts !== h) { State.save(); if (!$('#lesson')) renderSide(); } }, 60000);
   });
 })();
